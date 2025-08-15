@@ -1,0 +1,230 @@
+name: Bootstrap Issues
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/bootstrap-issues.yml
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-issues-and-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create labels and issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+
+            // --- 1) Ensure labels exist ---
+            const labels = [
+              { name: "project-weather", color: "1f77b4", description: "Weather API → Salesforce" },
+              { name: "project-currency", color: "2ca02c", description: "Currency rates → Salesforce" },
+              { name: "setup", color: "6a737d", description: "Repo and env setup" },
+              { name: "python", color: "ffd43b", description: "Python tasks" },
+              { name: "salesforce", color: "00a1e0", description: "Apex/LWC/Org tasks" },
+              { name: "lwc", color: "17becf", description: "Lightning Web Components" },
+              { name: "docs", color: "b07aa1", description: "Documentation and guides" },
+              { name: "tools", color: "9467bd", description: "Postman/Utilities" },
+              { name: "cheatsheet", color: "e377c2", description: "Cheatsheets and snippets" },
+              { name: "good first issue", color: "7057ff", description: "Great for a quick start" }
+            ];
+
+            async function ensureLabel(label) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label.name });
+              } catch {
+                await github.rest.issues.createLabel({ owner, repo, ...label });
+              }
+            }
+            await Promise.all(labels.map(ensureLabel));
+
+            // --- 2) Helper: create issue if not exists (by exact title) ---
+            async function ensureIssue({ title, body, labels }) {
+              const q = `repo:${owner}/${repo} is:issue in:title "${title.replace(/"/g, '\\"')}"`;
+              const search = await github.rest.search.issuesAndPullRequests({ q });
+              if (search.data.total_count === 0) {
+                await github.rest.issues.create({ owner, repo, title, body, labels });
+              }
+            }
+
+            // --- 3) Weather project issues ---
+            const weather = [
+              {
+                title: "[SETUP] Create base repository structure",
+                labels: ["project-weather","setup","docs","good first issue"],
+                body:
+                  `Create folders and seed README files:
+- \`projects/weather-integration/\`
+- \`cheatsheets/\`
+- \`tools/\`
+
+Add root README with project overview.`
+              },
+              {
+                title: "[PYTHON] Fetch weather from OpenWeatherMap",
+                labels: ["project-weather","python"],
+                body:
+                  `Goal: simple CLI script that fetches weather by city.
+
+Tasks:
+- Add \`projects/weather-integration/python/fetch_weather.py\`
+- Use \`units=metric\`
+- Print: city, temp, humidity, description
+- Add \`requirements.txt\` and usage snippet in project README`
+              },
+              {
+                title: "[SALESFORCE] Create custom object Weather__c",
+                labels: ["project-weather","salesforce"],
+                body:
+                  `Create custom object \`Weather__c\` with fields:
+- \`City__c\` (Text, 120)
+- \`Temperature__c\` (Number, 3,1)
+- \`Humidity__c\` (Number, 3,0)
+- \`Description__c\` (Text, 255)
+- \`ObservedAt__c\` (Date/Time)
+
+Add a tab for quick access.`
+              },
+              {
+                title: "[SALESFORCE] Apex controller WeatherController.cls",
+                labels: ["project-weather","salesforce"],
+                body:
+                  `Add \`WeatherController.cls\`:
+- \`@AuraEnabled(cacheable=true)\` method to get latest \`Weather__c\`
+- SOQL ordered by \`ObservedAt__c DESC\`, LIMIT 1
+- Add \`WeatherControllerTest.cls\` with >75% coverage`
+              },
+              {
+                title: "[PYTHON→SF] Send weather data to Salesforce via REST",
+                labels: ["project-weather","python","salesforce"],
+                body:
+                  `Goal: POST weather data into \`Weather__c\`.
+
+Tasks:
+- Create Connected App (OAuth 2.0)
+- From Python, obtain access token and call REST API:
+  - SObject insert endpoint or custom Apex REST
+- Handle errors and log responses
+- Document required env vars (e.g. \`SF_LOGIN_URL\`, \`SF_CLIENT_ID\`, \`SF_CLIENT_SECRET\`, \`SF_USERNAME\`, \`SF_PASSWORD\`, \`SF_TOKEN\`)`
+              },
+              {
+                title: "[LWC] weatherDisplay component",
+                labels: ["project-weather","lwc","salesforce"],
+                body:
+                  `Create \`weatherDisplay\` LWC:
+- Call \`WeatherController.get\` method
+- Show city, temp, humidity, description, observed time
+- Basic card UI with responsive layout`
+              },
+              {
+                title: "[DOCS] Weather integration README",
+                labels: ["project-weather","docs"],
+                body:
+                  `Write \`projects/weather-integration/docs/README.md\`:
+- How to get OpenWeatherMap key
+- How to set up Connected App
+- How to run Python script
+- How to deploy Apex/LWC
+- Screenshots of the final UI`
+              },
+              {
+                title: "[TOOLS] Postman collection: Weather + Salesforce",
+                labels: ["project-weather","tools"],
+                body:
+                  `Add Postman collections:
+- OpenWeatherMap requests
+- Salesforce OAuth + SObject insert
+
+Export to \`projects/weather-integration/postman/weather_api.postman_collection.json\`.`
+              }
+            ];
+
+            // --- 4) Currency project issues ---
+            const currency = [
+              {
+                title: "[CURRENCY] Fetch currency rates from public API",
+                labels: ["project-currency","python"],
+                body:
+                  `Choose a rates API (e.g., ExchangeRate API or Fixer).
+Tasks:
+- Python script \`projects/currency-sync/python/fetch_rates.py\`
+- Base currency: EUR
+- Output: EUR→USD, GBP, CHF, JPY (extensible)`
+              },
+              {
+                title: "[SALESFORCE] Create object CurrencyRate__c",
+                labels: ["project-currency","salesforce"],
+                body:
+                  `Create \`CurrencyRate__c\` with fields:
+- \`Base__c\` (Text, 3)
+- \`Symbol__c\` (Text, 6)
+- \`Rate__c\` (Number, 12,6)
+- \`AsOf__c\` (Date)
+
+Index \`AsOf__c, Symbol__c\` for quick queries.`
+              },
+              {
+                title: "[PYTHON→SF] Upsert currency rates via REST",
+                labels: ["project-currency","python","salesforce"],
+                body:
+                  `Implement upsert (avoid duplicates):
+- External Id on \`CurrencyRate__c\`: \`ExtKey__c\` = \`Symbol__c + '_' + AsOf__c\`
+- Python script calls REST to upsert batch
+- Document mapping and error handling`
+              },
+              {
+                title: "[LWC] currencyRatesBoard component (chart/table)",
+                labels: ["project-currency","lwc","salesforce"],
+                body:
+                  `Create \`currencyRatesBoard\` LWC:
+- Filter by \`Symbol__c\`
+- Show latest rate and simple trend (last 7 entries)
+- Stretch: mini line chart using \`lightning-chart\` or plain SVG`
+              },
+              {
+                title: "[DOCS] Currency sync README",
+                labels: ["project-currency","docs"],
+                body:
+                  `Add docs covering:
+- API key setup
+- Scheduling ideas (Apex Scheduled Job / external cron)
+- Data model notes and SOQL examples`
+              }
+            ];
+
+            // --- 5) Cheatsheets & Tools general ---
+            const general = [
+              {
+                title: "[CHEATSHEET] Apex callouts (REST) quick guide",
+                labels: ["cheatsheet","docs","salesforce","good first issue"],
+                body:
+                  `Create \`cheatsheets/apex-api-calls.md\` with:
+- Named Credentials
+- \`HttpRequest\`/\`HttpResponse\` snippets
+- Testing callouts with \`HttpCalloutMock\``
+              },
+              {
+                title: "[CHEATSHEET] Python requests quick guide",
+                labels: ["cheatsheet","docs","python","good first issue"],
+                body:
+                  `Create \`cheatsheets/python-rest.md\` with:
+- \`requests\` basics (GET/POST, headers, timeouts)
+- Env variables loading
+- Error handling patterns`
+              }
+            ];
+
+            // Create them all
+            const allIssues = [...weather, ...currency, ...general];
+            for (const issue of allIssues) {
+              await ensureIssue(issue);
+            }
+
+            core.info(`Created/ensured ${allIssues.length} issues and ${labels.length} labels.`);
