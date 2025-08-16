@@ -1,0 +1,6 @@
+default_city: "Valencia,ES"
+weather:
+  units: "metric"
+  api_base: "https://api.openweathermap.org/data/2.5/weather"
+salesforce:
+  api_version: "61.0"
