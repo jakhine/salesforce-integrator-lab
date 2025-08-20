@@ -26,4 +26,6 @@ venv/
 # Env / secrets
 .env
 .env.*
+*.crt
+*.key
 *.local
