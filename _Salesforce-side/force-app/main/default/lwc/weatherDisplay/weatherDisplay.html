@@ -1,0 +1,28 @@
+<template>
+  <template if:true={hasData}>
+    <lightning-card title="Latest Weather">
+      <div class="slds-p-around_medium slds-text-body_regular">
+        <div><b>City:</b> {city}</div>
+        <div><b>Condition:</b> {condition}</div>
+        <div><b>Temperature:</b> {temperature} °C</div>
+        <div><b>Humidity:</b> {humidity}%</div>
+
+        <!-- Для дат лучше использовать форматор -->
+        <div><b>Observed:</b>
+          <lightning-formatted-date-time
+            value={observedAt}
+            year="numeric"
+            month="short"
+            day="2-digit"
+            hour="2-digit"
+            minute="2-digit">
+          </lightning-formatted-date-time>
+        </div>
+      </div>
+    </lightning-card>
+  </template>
+
+  <!-- <template if:true={error}>
+    <c-error-panel errors={error}></c-error-panel>
+  </template> -->
+</template>
